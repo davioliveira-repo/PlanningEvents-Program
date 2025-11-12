@@ -17,13 +17,8 @@
       "data": "24/11 a 28/11",
       "local": "ECIT Cristiano Cartaxo",
       "telefone": "83991184087",
-      "inscricoes": [
-        {
-          "nome": "John Lennon",
-          "email": "professor.john@gmail.com"
-        }
-      ]
+      "inscricoes": []
     }
   },
-  "next_id": 5
+  "next_id": 6
 }
