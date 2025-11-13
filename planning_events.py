@@ -3,29 +3,17 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-# ---------------- Config ----------------
 APP_NAME = "Planning Events - Gestão de Eventos"
 
-# *** ALTERAÇÃO DE DIRETÓRIO ***
-# 1. Obtém o diretório (pasta) onde este script está rodando
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-# 2. Define o arquivo de dados DENTRO do diretório do script
 DATA_FILE = SCRIPT_DIR / "events.json"
-# Fim da alteração de diretório.
-# -------------------------------------
 
-# ---------------- Estado global ----------------
-# {id: {nome, data, local, telefone, inscricoes: [{nome,email}, ...]}}
 eventos = {}
 ID_CONTADOR = 1
 DEFAULT_THEME = "vista"
 
-# ---------------- Persistência ----------------
 def load_events():
-    """
-    Carrega eventos do arquivo JSON. Se não existir, inicializa variáveis.
-    """
     global eventos, ID_CONTADOR
     if not DATA_FILE.exists():
         eventos = {}
@@ -34,7 +22,6 @@ def load_events():
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             payload = json.load(f)
-        # Converte chaves de volta para inteiros (necessário pois JSON usa strings para chaves)
         eventos = {int(k): v for k, v in payload.get("eventos", {}).items()}
         next_id = payload.get("next_id")
         if next_id is None:
@@ -42,33 +29,23 @@ def load_events():
         else:
             ID_CONTADOR = int(next_id)
     except Exception as e:
-        # Em geral aqui não temos root ainda; usa showwarning sem parent.
         messagebox.showwarning(APP_NAME, f"Falha ao carregar dados: {e}")
         eventos = {}
         ID_CONTADOR = 1
 
 def save_events():
-    """
-    Salva todos os eventos no arquivo JSON.
-    """
     try:
-        # Converte chaves de ID para string (necessário para serialização JSON)
         payload = {"eventos": {str(k): v for k, v in eventos.items()}, "next_id": ID_CONTADOR}
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        # Tenta usar root como parent se existir, caso contrário sem parent
         root = tk._get_default_root()
         if root:
             messagebox.showerror(APP_NAME, f"Falha ao salvar dados: {e}", parent=root)
         else:
             messagebox.showerror(APP_NAME, f"Falha ao salvar dados: {e}")
 
-# ---------------- Tema (claro) ----------------
 def apply_style(root, style):
-    """
-    Aplica o tema padrão e garante que as cores sejam as do tema base.
-    """
     try:
         style.theme_use(DEFAULT_THEME)
         root.configure(bg=None)
@@ -82,11 +59,7 @@ def apply_style(root, style):
     except Exception:
         pass
 
-# ---------------- GUI: ações ----------------
 def atualizar_treeview(tree):
-    """
-    ID é inserido no parâmetro 'text' (Coluna #0) e o restante no 'values'
-    """
     tree.delete(*tree.get_children())
     for id_evento, dados in sorted(eventos.items()):
         tree.insert("", "end", iid=str(id_evento), text=str(id_evento), values=(
@@ -103,7 +76,7 @@ def abrir_adicionar_evento(parent, tree, style):
     win.transient(parent)
     win.grab_set()
     win.resizable(False, False)
-    win.lift()  # garante que o Toplevel fique à frente
+    win.lift()
 
     frm = ttk.Frame(win, padding=12)
     frm.grid()
@@ -131,7 +104,6 @@ def abrir_adicionar_evento(parent, tree, style):
         local = local_var.get().strip()
         tel = tel_var.get().strip()
         if not nome or not data or not local:
-            # passa parent=win para que o diálogo seja modal sobre a janela atual
             messagebox.showerror("Erro", "Nome, Data e Local são obrigatórios.", parent=win)
             return
         novo = {"nome": nome, "data": data, "local": local, "telefone": tel, "inscricoes": []}
@@ -139,7 +111,6 @@ def abrir_adicionar_evento(parent, tree, style):
         ID_CONTADOR += 1
         save_events()
         atualizar_treeview(tree)
-        # passa parent=win para que a caixa de sucesso fique sobre a Toplevel
         messagebox.showinfo("Sucesso", f"Evento '{nome}' criado.", parent=win)
         win.destroy()
 
@@ -151,7 +122,7 @@ def abrir_adicionar_evento(parent, tree, style):
 def abrir_inscrever_participante(parent, tree):
     selected = tree.selection()
     if not selected:
-        messagebox.showwarning(APP_NAME, "Selecione um evento.", parent=parent)  # parent=parent
+        messagebox.showwarning(APP_NAME, "Selecione um evento.", parent=parent)
         return
     id_evento = int(selected[0])
     dados = eventos.get(id_evento)
@@ -218,9 +189,6 @@ def abrir_consultar_inscritos(parent, tree):
     txt.pack(padx=8, pady=8)
 
 def abrir_remover_participante(parent, tree):
-    """
-    Abre uma janela com a lista de inscritos do evento selecionado e permite remover um inscrito.
-    """
     selected = tree.selection()
     if not selected:
         messagebox.showwarning(APP_NAME, "Selecione um evento.", parent=parent)
@@ -253,7 +221,6 @@ def abrir_remover_participante(parent, tree):
         listbox.insert("end", f"{p.get('nome')} ({p.get('email')})")
     listbox.grid(row=1, column=0, pady=(6,0))
 
-    # botões
     btn_frame = ttk.Frame(frm)
     btn_frame.grid(row=2, column=0, pady=(8,0))
 
@@ -267,7 +234,6 @@ def abrir_remover_participante(parent, tree):
         nome = participante.get("nome", "—")
         if messagebox.askyesno("Confirmar", f"Remover {nome} do evento?", parent=win):
             try:
-                # remove do dado original
                 dados["inscricoes"].pop(idx)
                 save_events()
                 atualizar_treeview(tree)
@@ -285,7 +251,6 @@ def abrir_remover_participante(parent, tree):
 def remover_evento(tree):
     selected = tree.selection()
     if not selected:
-        # obtém janela pai (root) do tree e passa como parent
         root = tree.winfo_toplevel()
         messagebox.showwarning(APP_NAME, "Selecione um evento para remover.", parent=root)
         return
@@ -296,13 +261,11 @@ def remover_evento(tree):
         messagebox.showerror(APP_NAME, "Evento não encontrado.", parent=root)
         return
     root = tree.winfo_toplevel()
-    # passa parent=root para que o askyesno fique sobre a janela principal
     if messagebox.askyesno(APP_NAME, f"Remover '{ev.get('nome')}' (ID {id_evento})?", parent=root):
         del eventos[id_evento]
         save_events()
         atualizar_treeview(tree)
 
-# ---------------- Montagem interface ----------------
 def criar_interface():
     load_events()
 
@@ -311,7 +274,6 @@ def criar_interface():
     root.geometry("940x540")
 
     style = ttk.Style(root)
-    # Tenta usar o tema padrão definido.
     try:
         style.theme_use(DEFAULT_THEME)
     except Exception:
@@ -320,34 +282,27 @@ def criar_interface():
         except Exception:
             pass
 
-    # cabeçalho
     header = ttk.Frame(root, padding=(12,8))
     header.pack(fill="x")
     ttk.Label(header, text="Planning Events", font=(None, 16, "bold")).pack(anchor="w")
     ttk.Label(header, text="Gerencie eventos: adicionar, inscrever participantes e exportar.").pack(anchor="w")
 
-    # barra de botões
     bar = ttk.Frame(root, padding=(8,6))
     bar.pack(fill="x")
 
-    # área do tree
     tree_frame = ttk.Frame(root, padding=8)
     tree_frame.pack(fill="both", expand=True)
 
-    # O ID será a coluna de índice ('#0'), o restante são as colunas de dados
     cols = ("Nome", "Data", "Local", "Contato", "Inscritos")
     tree = ttk.Treeview(tree_frame, columns=cols, show="headings", selectmode="browse")
 
-    # Configura a coluna de índice (ID)
     tree.heading("#0", text="ID")
     tree.column("#0", width=60, minwidth=40, anchor="center", stretch=tk.NO)
 
-    # Configura as demais colunas
     for c in cols:
         tree.heading(c, text=c)
         tree.column(c, anchor="w")
 
-    # Ajuste as larguras
     tree.column("Nome", width=360)
     tree.column("Data", width=120, anchor="center")
     tree.column("Local", width=220)
@@ -361,19 +316,16 @@ def criar_interface():
     tree_frame.rowconfigure(0, weight=1)
     tree_frame.columnconfigure(0, weight=1)
 
-    # agora que tree existe, montamos os botões
     ttk.Button(bar, text="Adicionar Evento", command=lambda: abrir_adicionar_evento(root, tree, style)).pack(side="left", padx=6)
     ttk.Button(bar, text="Inscrever Participante", command=lambda: abrir_inscrever_participante(root, tree)).pack(side="left", padx=6)
     ttk.Button(bar, text="Consultar Inscritos", command=lambda: abrir_consultar_inscritos(root, tree)).pack(side="left", padx=6)
     ttk.Button(bar, text="Remover Participante", command=lambda: abrir_remover_participante(root, tree)).pack(side="left", padx=6)
     ttk.Button(bar, text="Remover Evento", command=lambda: remover_evento(tree)).pack(side="left", padx=6)
 
-    # Botão Sair
     ttk.Button(bar, text="Sair", command=root.quit).pack(side="right", padx=6)
 
     atualizar_treeview(tree)
 
-    # salvar ao fechar
     def on_close():
         save_events()
         root.destroy()
